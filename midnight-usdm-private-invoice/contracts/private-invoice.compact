@@ -1,0 +1,19 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+export ledger invoicePaid: Boolean;
+
+export circuit createInvoice(
+  amount: Uint<64>,
+  counterparty: Bytes<32>
+): [] {
+  disclose(amount);
+  disclose(counterparty);
+  invoicePaid = false;
+}
+
+export circuit payInvoice(): [] {
+  assert(!invoicePaid, "Invoice has already been paid");
+  invoicePaid = true;
+}

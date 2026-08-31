@@ -1,0 +1,12 @@
+node_modules/
+web/node_modules/
+web/dist/
+
+.env
+*.env
+
+midnight-db/
+wallet-state.json
+
+.DS_Store
+npm-debug.log*

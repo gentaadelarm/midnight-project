@@ -11,7 +11,7 @@ import {
 } from "./invoice.mjs";
 
 dotenv.config({
-  path: "./node_modules/@via-labs-tech/usdm-bridge/.env",
+  path: ".env",
 });
 
 const app = express();

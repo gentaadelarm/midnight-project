@@ -203,7 +203,7 @@ function App() {
             <code>{txHash}</code>
 
             <a
-              href={"https://viascan.io/tx/" + txHash}
+              href={"https://scan.vialabs.tech/tx/" + txHash}
               target="_blank"
               rel="noreferrer"
             >

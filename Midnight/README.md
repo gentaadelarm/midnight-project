@@ -130,7 +130,7 @@ Expected response:
 Open another terminal:
 
 ```bash
-cd ~/MyProject/Verdik/Midnight/web
+cd web
 npm run dev
 ```
 
@@ -147,6 +147,9 @@ Open that URL in a browser with Lace Wallet installed.
 1. Open the frontend.
 2. Click **Connect Lace Wallet**.
 3. Approve the Lace connection request.
+
+> **Important:** The Cardano wallet connected through Lace must be the same wallet configured for the VIA Labs USDM Bridge SDK. The backend verifies the connected Lace address against the configured bridge wallet before submitting a Cardano → Midnight transfer. If the addresses do not match, the transfer is rejected.
+
 4. Select the transfer direction.
 5. Enter the USDM amount.
 6. Enter the destination address.
@@ -166,7 +169,7 @@ eba5876e7a10efcd2b91f5a74d3a7127dc91b3aa0ef386170d6be5b6ec43dbe1
 
 **VIA Scan:**
 
-https://viascan.io/tx/eba5876e7a10efcd2b91f5a74d3a7127dc91b3aa0ef386170d6be5b6ec43dbe1
+https://scan.vialabs.tech/tx/eba5876e7a10efcd2b91f5a74d3a7127dc91b3aa0ef386170d6be5b6ec43dbe1
 
 ## Attribution
 

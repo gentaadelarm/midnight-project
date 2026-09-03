@@ -1,73 +1,206 @@
 # Midnight USDM Private Invoice
 
-A private invoice DApp built on **Midnight Network Preview** using **Compact** smart contracts.
+A privacy-oriented invoice DApp built on **Midnight Network Preview** using **Compact** smart contracts and **USDM** as the payment asset.
 
-The project demonstrates a privacy-oriented invoice workflow where an invoice can be created, paid, and read from the Midnight blockchain through a command-line interface.
+The application combines:
 
-> **Network:** Midnight Preview
-> **Contract:** `private-invoice`
-> **Interface:** Interactive CLI
-> **Status:** Deployed and tested on Midnight Preview
+* A Compact invoice smart contract deployed on Midnight Preview.
+* An application-layer **unshielded USDM transfer** for invoice settlement.
+* A CLI interface for creating, paying, and reading invoice state.
+* A real USDM payment followed by a successful `payInvoice()` contract interaction.
+
+> **Built on Midnight Network using Compact.**
 
 ---
 
 ## Overview
 
-**Midnight USDM Private Invoice** is a Compact-based invoice application designed around a simple payment workflow:
+**Midnight USDM Private Invoice** demonstrates an invoice payment workflow on Midnight.
 
-1. Create an invoice with an amount.
-2. Store the invoice state on Midnight.
-3. Pay the invoice.
-4. Verify the payment state directly from the blockchain.
+The workflow is:
 
-The application uses Midnight's smart-contract infrastructure and ZK-enabled transaction flow while keeping the application architecture simple enough to run locally or against Midnight Preview.
+```text
+Create Invoice
+      │
+      ▼
+Midnight Compact Contract
+      │
+      │ pay invoice
+      ▼
+Application-layer USDM transfer
+      │
+      ▼
+Unshielded USDM payment on Midnight Preview
+      │
+      ▼
+payInvoice() contract interaction
+      │
+      ▼
+Invoice marked as paid
+```
+
+The project uses USDM as the actual payment asset. The USDM transfer is performed by the application layer, while the Compact contract maintains the invoice payment state.
+
+Because Preview USDM is an **unshielded token**, the USDM settlement itself is public on-chain. The Midnight contract remains responsible for the invoice state transition.
 
 ---
 
 ## Deployed Contract
 
-The original `private-invoice.compact` contract has been deployed successfully to **Midnight Preview**.
+The invoice contract is deployed on **Midnight Preview**.
 
 **Contract Address:**
 
 ```text
-c3e2cf06deb371c064dad59fda36a878933736b0331e2eed9baf1e782abff2ba
+a4dff7789033a495a60a256d8ee95c13a84dd29c3b3d1cf4d7b7195dae915cfd
 ```
 
-### Successful on-chain interactions
+The contract contains the original `private-invoice.compact` implementation created for this project and is not forked from another invoice application.
 
-The deployed contract has been tested with successful transactions after deployment.
+### Successful Preview interaction
 
-| Action              |    Block |
-| ------------------- | -------: |
-| Contract deployment | `633009` |
-| Create invoice      | `633009` |
-| Pay invoice         | `633028` |
+A successful payment flow was executed against the deployed contract.
 
-### Example transaction IDs
+| Item                       | Value                                                                |
+| -------------------------- | -------------------------------------------------------------------- |
+| Network                    | Midnight Preview                                                     |
+| Contract                   | `a4dff7789033a495a60a256d8ee95c13a84dd29c3b3d1cf4d7b7195dae915cfd`   |
+| USDM payment               | `0.000001 USDM`                                                      |
+| USDM transaction           | `004b87ebc532f0aa29f2e2719e9ed9be57cad4a33e19a372284f1587c9b4b6b3cb` |
+| Contract transaction       | `00b7b5abb93cde89fc67e0ed8c9b4a79c2a9b6da94bb7a0726a211cc1879c17d0c` |
+| Contract interaction block | `699525`                                                             |
+| Result                     | Successful                                                           |
 
-**Create Invoice**
+The USDM transaction and the subsequent `payInvoice()` contract interaction were both submitted successfully.
+
+---
+
+## USDM Payment Architecture
+
+### USDM is handled at the application layer
+
+USDM is intentionally handled outside the Compact contract as an **application-layer unshielded token transfer**.
+
+The Compact contract does not attempt to directly hold or transfer the USDM token. Instead, the CLI performs the USDM settlement first and then calls `payInvoice()` on the deployed invoice contract.
+
+The payment flow is implemented in:
 
 ```text
-00fe7022c77a84b78f8811fb2c3561e0d9784821c41ef0d311f67ddc85b412a04c
+src/cli.ts
 ```
 
-**Pay Invoice**
+The main USDM transfer function is:
 
 ```text
-009fd56c8aaa99a7d9b9e08c5d9310dfb9f1c7e53aecfa5eb8f19c488df8dcfadb
+transferUsdm()
 ```
 
-The invoice was subsequently read from the blockchain with:
+The function:
+
+1. Parses and validates the recipient's Midnight Preview unshielded address.
+2. Reads the wallet's current USDM balance.
+3. Builds an unshielded USDM transfer.
+4. Uses the Preview USDM token color.
+5. Signs the transfer using the wallet's unshielded keystore.
+6. Finalizes the transaction.
+7. Submits the USDM payment to Midnight Preview.
+8. Returns the USDM transaction ID.
+
+After the USDM transaction is successfully submitted, the CLI calls:
 
 ```text
-Invoice Amount: 100
-Invoice Paid:   YES
+payInvoice()
+```
+
+on the Compact contract.
+
+This means the application has a real USDM payment path rather than simply changing an invoice status.
+
+---
+
+## Preview USDM Asset
+
+The application uses the Midnight Preview USDM token color:
+
+```text
+003bacd9a361ba0d425e408776020e40271375e8b8de42d73eec046a44947d73
+```
+
+USDM uses **6 decimal places**.
+
+Therefore:
+
+```text
+1 USDM = 1,000,000 base units
+```
+
+For example:
+
+```text
+1000000 = 1 USDM
+100000  = 0.1 USDM
+1       = 0.000001 USDM
+```
+
+The token configuration is defined in:
+
+```text
+src/cli.ts
+```
+
+as:
+
+```ts
+const USDM_TOKEN_COLOR =
+  '003bacd9a361ba0d425e408776020e40271375e8b8de42d73eec046a44947d73';
+
+const USDM_DECIMALS = 6;
 ```
 
 ---
 
-## Smart Contract
+## Payment Implementation
+
+The application builds an unshielded USDM transfer using the Midnight wallet SDK.
+
+Conceptually, the payment path is:
+
+```text
+USDM_TOKEN_COLOR
+       │
+       ▼
+wallet.transferTransaction()
+       │
+       ▼
+wallet.signRecipe()
+       │
+       ▼
+unshieldedKeystore.signData()
+       │
+       ▼
+wallet.finalizeRecipe()
+       │
+       ▼
+wallet.submitTransaction()
+```
+
+The relevant implementation is:
+
+```text
+src/cli.ts
+```
+
+The wallet's unshielded signing keystore is created in:
+
+```text
+src/wallet.ts
+```
+
+The signing step is important for unshielded transactions because the transaction must contain the required signatures before submission.
+
+---
+
+## Invoice Smart Contract
 
 The main Compact contract is:
 
@@ -75,54 +208,52 @@ The main Compact contract is:
 contracts/private-invoice.compact
 ```
 
-It defines two public ledger values:
+The contract maintains the invoice payment state:
 
 ```compact
-export ledger invoiceAmount: Uint<64>;
 export ledger invoicePaid: Boolean;
 ```
 
-And two circuits:
+### Create invoice
 
 ```compact
-export circuit createInvoice(amount: Uint<64>): [] {
-  invoiceAmount = disclose(amount);
+export circuit createInvoice(
+  amount: Uint<64>,
+  counterparty: Bytes<32>
+): [] {
+  disclose(amount);
+  disclose(counterparty);
   invoicePaid = false;
 }
+```
 
+### Pay invoice
+
+```compact
 export circuit payInvoice(): [] {
   assert(!invoicePaid, "Invoice has already been paid");
   invoicePaid = true;
 }
 ```
 
-The contract is an original implementation for this project and is not a fork of an existing invoice contract.
+The contract's responsibility is to maintain the invoice state. The actual USDM settlement is performed by the application layer.
 
 ---
 
-## USDM Payment Architecture
+## Privacy Model
 
-The invoice application is designed around a USDM payment workflow.
+The project uses Midnight's Compact smart-contract infrastructure for the invoice workflow.
 
-The current contract stores the invoice amount and payment status on Midnight. The current `payInvoice()` circuit records the invoice as paid but **does not itself perform a USDM token transfer**.
+The **USDM payment itself is unshielded**, meaning the token transfer is publicly observable on-chain.
 
-Therefore, USDM handling is currently separated from the invoice state machine at the application level.
+Therefore:
 
-Relevant contract code:
+* Invoice state is managed by a Midnight Compact contract.
+* USDM settlement is performed through an application-layer unshielded transfer.
+* The USDM transfer should not be considered private.
+* DUST and tNIGHT are separate from the USDM payment asset.
 
-```text
-contracts/private-invoice.compact
-```
-
-Relevant application code:
-
-```text
-src/cli.ts
-```
-
-The CLI is responsible for interacting with the deployed invoice contract and displaying the resulting invoice state.
-
-> **Important:** The current implementation should be considered an invoice/payment-state prototype rather than a completed on-chain USDM transfer implementation. A future version can connect the payment circuit to an actual USDM asset transfer or application-layer USDM settlement flow.
+This architecture was chosen to provide a simple and reproducible USDM payment path while keeping the invoice contract small.
 
 ---
 
@@ -154,15 +285,9 @@ Select:
 1
 ```
 
-Then enter the invoice amount:
+The CLI submits `createInvoice()` to the deployed Compact contract.
 
-```text
-Enter invoice amount: 100
-```
-
-The CLI submits the transaction and displays the transaction ID and block height.
-
-### Pay an invoice
+### Pay an invoice with USDM
 
 Select:
 
@@ -170,7 +295,22 @@ Select:
 2
 ```
 
-The payment circuit is submitted to the deployed contract.
+Enter the USDM amount in base units:
+
+```text
+Enter USDM payment amount (base units, 1 USDM = 1000000):
+```
+
+The CLI then:
+
+```text
+1/2 Sending USDM payment...
+2/2 Marking invoice as paid...
+```
+
+The first transaction is the real USDM payment.
+
+The second transaction calls `payInvoice()` on the Midnight contract.
 
 ### Read invoice state
 
@@ -180,12 +320,14 @@ Select:
 3
 ```
 
+The CLI reads the invoice state directly from the deployed contract.
+
 Example:
 
 ```text
 ─── Invoice State ─────────────────────────
-Invoice Amount: 100
-Invoice Paid:   YES
+Payment Status: PAID ✅
+USDM Settlement: Application-layer unshielded USDM
 ```
 
 ### Check wallet balance
@@ -196,7 +338,27 @@ Select:
 4
 ```
 
-The CLI displays the wallet's tNIGHT and DUST balances.
+The CLI displays the wallet's tNIGHT, USDM, and DUST balances.
+
+---
+
+## Configuration
+
+The application-layer USDM recipient is configured using:
+
+```text
+USDM_RECIPIENT_ADDRESS
+```
+
+in the local `.env` file.
+
+Example:
+
+```text
+USDM_RECIPIENT_ADDRESS=<MIDNIGHT_PREVIEW_UNSHIELDED_ADDRESS>
+```
+
+Do not commit `.env` or wallet credentials to the repository.
 
 ---
 
@@ -207,7 +369,8 @@ The CLI displays the wallet's tNIGHT and DUST balances.
 * Docker Compose v2
 * Compact compiler
 * Midnight Preview access
-* A funded Preview wallet for transaction execution
+* A funded Midnight Preview wallet
+* Preview USDM for payment testing
 
 ---
 
@@ -236,7 +399,7 @@ Compile the invoice contract:
 npm run compile
 ```
 
-The compiled contract is generated under:
+The generated contract artifacts are placed under:
 
 ```text
 contracts/managed/private-invoice/
@@ -244,9 +407,9 @@ contracts/managed/private-invoice/
 
 ---
 
-## Local Proof Server
+## Local Midnight Services
 
-Start the local Midnight services:
+Start the local services:
 
 ```bash
 docker compose up -d
@@ -260,13 +423,13 @@ docker compose ps
 
 The project uses:
 
-| Service      |   Port | Purpose                 |
-| ------------ | -----: | ----------------------- |
-| Node         | `9944` | Midnight node           |
-| Indexer      | `8088` | Blockchain/indexer data |
-| Proof Server | `6300` | ZK proof generation     |
+| Service       |   Port | Purpose                 |
+| ------------- | -----: | ----------------------- |
+| Midnight Node | `9944` | Local Midnight node     |
+| Indexer       | `8088` | Blockchain/indexer data |
+| Proof Server  | `6300` | ZK proof generation     |
 
-Stop the services with:
+Stop the services:
 
 ```bash
 docker compose down
@@ -276,7 +439,7 @@ docker compose down
 
 ## Deploy to Midnight Preview
 
-The application supports the Midnight Preview network.
+The application supports Midnight Preview.
 
 Deploy with:
 
@@ -284,77 +447,65 @@ Deploy with:
 npm run deploy -- --network preview
 ```
 
-After deployment, the contract address is saved locally in:
+The deployment state is saved locally in:
 
 ```text
 .midnight-state.json
 ```
 
-The state file is intentionally ignored by Git because it contains wallet information.
+Wallet and deployment state files are intentionally ignored by Git.
+
+> The contract address documented in this README is the already deployed Preview contract used for the successful USDM payment test.
 
 ---
 
-## Run the CLI Against Preview
+## Run Against Preview
 
-After deployment:
+Start the CLI:
 
 ```bash
 npm run cli -- --network preview
 ```
 
-The CLI reconnects to the deployed contract and synchronizes the wallet with Midnight Preview.
+The CLI synchronizes the wallet, connects to the deployed contract, and exposes the invoice/payment workflow.
 
 ---
 
 ## Network Configuration
 
-The project supports:
+Supported networks include:
 
-* `undeployed` — local Midnight development network
+* `undeployed` — local development
 * `preview` — Midnight Preview
 * `preprod` — Midnight Preprod
 
-Examples:
-
-```bash
-npm run deploy -- --network preview
-```
+Preview example:
 
 ```bash
 npm run cli -- --network preview
-```
-
-Check the active network:
-
-```bash
-npm run network
-```
-
-Switch networks:
-
-```bash
-npm run network preview
 ```
 
 ---
 
 ## Wallet and DUST
 
-Transactions on Midnight require the appropriate network resources.
+Midnight transactions require the appropriate network resources.
 
-For Preview, the project uses a generated wallet and tNIGHT obtained from the Midnight Preview faucet.
+The application synchronizes:
 
-The wallet synchronization state is cached locally in:
+* tNIGHT
+* USDM
+* DUST
+
+Wallet synchronization state is cached locally in:
 
 ```text
 .midnight-wallet-state/
 ```
 
-This directory is ignored by Git.
+This directory must not be committed to Git.
 
-The project also monitors the wallet's DUST balance because DUST is required for transaction execution.
-
-Check the wallet balance with:
+Check balances with:
 
 ```bash
 npm run check-balance -- --network preview
@@ -383,6 +534,7 @@ midnight-usdm-private-invoice/
 │
 ├── docker-compose.yml
 ├── package.json
+├── package-lock.json
 ├── tsconfig.json
 └── README.md
 ```
@@ -393,21 +545,21 @@ midnight-usdm-private-invoice/
 
 Original Compact invoice smart contract.
 
-**`src/deploy.ts`**
-
-Deploys the compiled contract to the selected Midnight network.
-
 **`src/cli.ts`**
 
-Interactive interface for creating, paying, and reading invoices.
+Interactive invoice interface and application-layer USDM settlement implementation.
+
+**`src/wallet.ts`**
+
+Creates and synchronizes the Midnight wallet, including the unshielded wallet used for USDM payments.
+
+**`src/deploy.ts`**
+
+Deploys the Compact contract to the selected Midnight network.
 
 **`src/network.ts`**
 
 Handles network configuration and deployment state.
-
-**`src/wallet.ts`**
-
-Creates and synchronizes the Midnight wallet.
 
 ---
 
@@ -418,21 +570,11 @@ Creates and synchronizes the Midnight wallet.
 | `npm run compile`            | Compile the Compact invoice contract       |
 | `npm run deploy`             | Deploy the contract                        |
 | `npm run cli`                | Open the interactive invoice CLI           |
-| `npm run check-balance`      | Check tNIGHT and DUST balances             |
+| `npm run check-balance`      | Check wallet balances                      |
 | `npm run network`            | Show or change the active network          |
-| `npm run proof-server:start` | Start the local proof server/services      |
-| `npm run proof-server:stop`  | Stop the local services                    |
+| `npm run proof-server:start` | Start local Midnight services              |
+| `npm run proof-server:stop`  | Stop local Midnight services               |
 | `npm run clean`              | Remove generated contract and wallet state |
-
-For Preview:
-
-```bash
-npm run deploy -- --network preview
-```
-
-```bash
-npm run cli -- --network preview
-```
 
 ---
 
@@ -440,24 +582,37 @@ npm run cli -- --network preview
 
 This project was built on **Midnight Network** using the **Compact** smart-contract language and Midnight SDK.
 
-The application intentionally keeps the invoice contract small so the payment-state workflow can be easily inspected and reproduced.
+The invoice contract is an original implementation created for this project.
 
-The `private-invoice.compact` contract is the original contract created for this project.
+The USDM payment path is implemented at the application layer using Midnight's unshielded token transaction flow.
+
+The successful Preview test demonstrated both:
+
+1. A real USDM transfer.
+2. A subsequent successful `payInvoice()` interaction with the deployed Compact contract.
 
 ---
 
 ## Security
 
-Never commit wallet recovery phrases, private keys, seeds, or generated wallet state to the repository.
+Never commit:
 
-The following files contain local wallet/deployment state and should remain private:
+* Wallet recovery phrases
+* Private keys
+* Seeds
+* `.env`
+* Generated wallet state
+* Deployment state containing sensitive wallet information
+
+The following local files/directories should remain private:
 
 ```text
+.env
 .midnight-state.json
 .midnight-wallet-state/
 ```
 
-Use testnet funds only when working on Midnight Preview.
+Use testnet assets only when working on Midnight Preview.
 
 ---
 

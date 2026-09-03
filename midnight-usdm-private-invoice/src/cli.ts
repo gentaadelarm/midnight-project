@@ -27,6 +27,19 @@ globalThis.WebSocket = WebSocket;
 // the same private state. The private-invoice contract has no witnesses (empty state).
 const PRIVATE_STATE_ID = 'privateInvoicePrivateState';
 
+const USDM_TOKEN_COLOR =
+  '003bacd9a361ba0d425e408776020e40271375e8b8de42d73eec046a44947d73';
+
+const USDM_DECIMALS = 6;
+
+function formatUsdm(amount: bigint): string {
+  const whole = amount / 1_000_000n;
+  const fraction = (amount % 1_000_000n)
+    .toString()
+    .padStart(6, '0');
+
+  return `${whole}.${fraction}`;
+}
 const { network, config: networkConfig } = resolveNetwork();
 const WALLET = getOrCreateWallet(network);
 const SEED = WALLET.seed;
@@ -139,8 +152,14 @@ async function main() {
 
     // Persist sync state so the next run doesn't have to redo this work.
     await persistWalletState(network, walletCtx);
-    const balance = state.unshielded.balances[unshieldedToken().raw] ?? 0n;
-    console.log(`  Balance: ${balance.toLocaleString()} tNight\n`);
+   const balance =
+  state.unshielded.balances[unshieldedToken().raw] ?? 0n;
+
+const usdmBalance =
+  state.unshielded.balances[USDM_TOKEN_COLOR] ?? 0n;
+
+console.log(`  Balance: ${balance.toLocaleString()} tNight`);
+console.log(`  USDM:    ${formatUsdm(usdmBalance)} USDM\n`);
 
     // Surface a faucet hint when a public-network wallet has 0 tNIGHT.
     // Reads (option 2) work without funds, but writes (option 1) need DUST
@@ -291,15 +310,21 @@ async function main() {
               await walletCtx.wallet.waitForSyncedState();
 
             const currentBalance =
-              currentState.unshielded.balances[
-                unshieldedToken().raw
-              ] ?? 0n;
+  currentState.unshielded.balances[
+    unshieldedToken().raw
+  ] ?? 0n;
 
-            const dustBalance =
-              currentState.dust.balance(new Date());
+const currentUsdmBalance =
+  currentState.unshielded.balances[
+    USDM_TOKEN_COLOR
+  ] ?? 0n;
 
-            console.log(`\n  tNight: ${currentBalance.toLocaleString()}`);
-            console.log(`  DUST:   ${dustBalance.toLocaleString()}\n`);
+const dustBalance =
+  currentState.dust.balance(new Date());
+
+console.log(`\n  tNight: ${currentBalance.toLocaleString()}`);
+console.log(`  USDM:   ${formatUsdm(currentUsdmBalance)}`);
+console.log(`  DUST:   ${dustBalance.toLocaleString()}\n`);
           } catch (error) {
             console.error(
               '\n  ❌ Failed:',

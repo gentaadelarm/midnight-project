@@ -33,7 +33,7 @@ import {
   saveWalletState,
   type ChildKind,
   type PersistedWalletState,
-} from './wallet-state.ts';
+} from './wallet-state';
 
 export { unshieldedToken };
 export type { PersistedWalletState };
@@ -43,7 +43,7 @@ export {
   clearWalletState,
   WALLET_STATE_DIR,
   WALLET_STATE_VERSION,
-} from './wallet-state.ts';
+} from './wallet-state';
 
 function deriveKeys(seed: string) {
   const hdWallet = HDWallet.fromSeed(Buffer.from(seed, 'hex'));
